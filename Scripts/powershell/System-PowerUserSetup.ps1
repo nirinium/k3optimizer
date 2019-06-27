@@ -419,3 +419,196 @@ Function InstallThirdPartyBloat {
 	Get-AppxPackage -AllUsers "WinZipComputing.WinZipUniversal" | ForEach-Object {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
 	Get-AppxPackage -AllUsers "XINGAG.XING" | ForEach-Object {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
 }
+
+# Disable Edge preload after Windows startup - Applicable since Win10 1809
+Function DisableEdgePreload {
+	Write-Output "Disabling Edge preload..."
+	If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main")) {
+		New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main" -Force | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main" -Name "AllowPrelaunch" -Type DWord -Value 0
+	If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\TabPreloader")) {
+		New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\TabPreloader" -Force | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\TabPreloader" -Name "AllowTabPreloading" -Type DWord -Value 0
+}
+
+# Enable Edge preload after Windows startup
+Function EnableEdgePreload {
+	Write-Output "Enabling Edge preload..."
+	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\Main" -Name "AllowPrelaunch" -ErrorAction SilentlyContinue
+	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftEdge\TabPreloader" -Name "AllowTabPreloading" -ErrorAction SilentlyContinue
+}
+
+# Disable Edge desktop shortcut creation after certain Windows updates are applied
+Function DisableEdgeShortcutCreation {
+	Write-Output "Disabling Edge shortcut creation..."
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "DisableEdgeDesktopShortcutCreation" -Type DWord -Value 1
+}
+
+# Enable Edge desktop shortcut creation after certain Windows updates are applied
+Function EnableEdgeShortcutCreation {
+	Write-Output "Enabling Edge shortcut creation..."
+	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "DisableEdgeDesktopShortcutCreation" -ErrorAction SilentlyContinue
+}
+
+# Disable Internet Explorer first run wizard
+Function DisableIEFirstRun {
+	Write-Output "Disabling Internet Explorer first run wizard..."
+	If (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Main")) {
+		New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Main" -Force | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Main" -Name "DisableFirstRunCustomize" -Type DWord -Value 1
+}
+
+# Enable Internet Explorer first run wizard
+Function EnableIEFirstRun {
+	Write-Output "Disabling Internet Explorer first run wizard..."
+	Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Main" -Name "DisableFirstRunCustomize" -ErrorAction SilentlyContinue
+}
+
+# Install .NET Framework 2.0, 3.0 and 3.5 runtimes - Requires internet connection
+Function InstallNET23 {
+	Write-Output "Installing .NET Framework 2.0, 3.0 and 3.5 runtimes..."
+	If ((Get-CimInstance -Class "Win32_OperatingSystem").ProductType -eq 1) {
+		Enable-WindowsOptionalFeature -Online -FeatureName "NetFx3" -NoRestart -WarningAction SilentlyContinue | Out-Null
+	} Else {
+		Install-WindowsFeature -Name "NET-Framework-Core" -WarningAction SilentlyContinue | Out-Null
+	}
+}
+
+# Uninstall .NET Framework 2.0, 3.0 and 3.5 runtimes
+Function UninstallNET23 {
+	Write-Output "Uninstalling .NET Framework 2.0, 3.0 and 3.5 runtimes..."
+	If ((Get-CimInstance -Class "Win32_OperatingSystem").ProductType -eq 1) {
+		Disable-WindowsOptionalFeature -Online -FeatureName "NetFx3" -NoRestart -WarningAction SilentlyContinue | Out-Null
+	} Else {
+		Uninstall-WindowsFeature -Name "NET-Framework-Core" -WarningAction SilentlyContinue | Out-Null
+	}
+}
+
+# Enable Hibernation - Do not use on Server with automatically started Hyper-V hvboot service as it may lead to BSODs (Win10 with Hyper-V is fine)
+Function EnableHibernation {
+	Write-Output "Enabling Hibernation..."
+	Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Session Manager\Power" -Name "HibernateEnabled" -Type DWord -Value 1
+	If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings")) {
+		New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" -Name "ShowHibernateOption" -Type DWord -Value 1
+	powercfg /HIBERNATE ON 2>&1 | Out-Null
+}
+
+# Disable Hibernation
+Function DisableHibernation {
+	Write-Output "Disabling Hibernation..."
+	Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Session Manager\Power" -Name "HibernateEnabled" -Type DWord -Value 0
+	If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings")) {
+		New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" -Name "ShowHibernateOption" -Type DWord -Value 0
+	powercfg /HIBERNATE OFF 2>&1 | Out-Null
+}
+
+# Disable Sleep start menu and keyboard button
+Function DisableSleepButton {
+	Write-Output "Disabling Sleep start menu and keyboard button..."
+	If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings")) {
+		New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" -Name "ShowSleepOption" -Type DWord -Value 0
+	powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0
+	powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0
+}
+
+# Enable Sleep start menu and keyboard button
+Function EnableSleepButton {
+	Write-Output "Enabling Sleep start menu and keyboard button..."
+	If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings")) {
+		New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" | Out-Null
+	}
+	Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" -Name "ShowSleepOption" -Type DWord -Value 1
+	powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 1
+	powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 1
+}
+
+# Disable display and sleep mode timeouts
+Function DisableSleepTimeout {
+	Write-Output "Disabling display and sleep mode timeouts..."
+	powercfg /X monitor-timeout-ac 0
+	powercfg /X monitor-timeout-dc 0
+	powercfg /X standby-timeout-ac 0
+	powercfg /X standby-timeout-dc 0
+}
+
+# Enable display and sleep mode timeouts
+Function EnableSleepTimeout {
+	Write-Output "Enabling display and sleep mode timeouts..."
+	powercfg /X monitor-timeout-ac 10
+	powercfg /X monitor-timeout-dc 5
+	powercfg /X standby-timeout-ac 30
+	powercfg /X standby-timeout-dc 15
+}
+
+# Disable Fast Startup
+Function DisableFastStartup {
+	Write-Output "Disabling Fast Startup..."
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power" -Name "HiberbootEnabled" -Type DWord -Value 0
+}
+
+# Enable Fast Startup
+Function EnableFastStartup {
+	Write-Output "Enabling Fast Startup..."
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power" -Name "HiberbootEnabled" -Type DWord -Value 1
+}
+
+# Disable automatic reboot on crash (BSOD)
+Function DisableAutoRebootOnCrash {
+	Write-Output "Disabling automatic reboot on crash (BSOD)..."
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl" -Name "AutoReboot" -Type DWord -Value 0
+}
+
+# Enable automatic reboot on crash (BSOD)
+Function EnableAutoRebootOnCrash {
+	Write-Output "Enabling automatic reboot on crash (BSOD)..."
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl" -Name "AutoReboot" -Type DWord -Value 1
+}
+
+# Enable NTFS paths with length over 260 characters
+Function EnableNTFSLongPaths {
+	Write-Output "Enabling NTFS paths with length over 260 characters..."
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Type DWord -Value 1
+}
+
+# Disable NTFS paths with length over 260 characters
+Function DisableNTFSLongPaths {
+	Write-Output "Disabling NTFS paths with length over 260 characters..."
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Type DWord -Value 0
+}
+
+# Stop and disable Windows Search indexing service
+Function DisableIndexing {
+	Write-Output "Stopping and disabling Windows Search indexing service..."
+	Stop-Service "WSearch" -WarningAction SilentlyContinue
+	Set-Service "WSearch" -StartupType Disabled
+}
+
+# Start and enable Windows Search indexing service
+Function EnableIndexing {
+	Write-Output "Starting and enabling Windows Search indexing service..."
+	Set-Service "WSearch" -StartupType Automatic
+	Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\WSearch" -Name "DelayedAutoStart" -Type DWord -Value 1
+	Start-Service "WSearch" -WarningAction SilentlyContinue
+}
+
+DisableIndexing
+DisableHibernation
+InstallNET23
+DisableIEFirstRun
+UninstallThirdPartyBloat
+UninstallMsftBloat
+UninstallOneDrive
+DisableOneDrive
+ShowHiddenFiles
+ShowKnownExtensions
+ShowExplorerTitleFullPath
+DisableShortcutInName

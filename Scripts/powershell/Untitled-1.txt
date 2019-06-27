@@ -1,0 +1,10 @@
+InstallNET23
+DisableIEFirstRun
+UninstallThirdPartyBloat
+UninstallMsftBloat
+UninstallOneDrive
+DisableOneDrive
+ShowHiddenFiles
+ShowKnownExtensions
+ShowExplorerTitleFullPath
+DisableShortcutInName
